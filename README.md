@@ -33,6 +33,7 @@ ex. python diff_cad_pcd.py --input sample_floor.pcd</br>
 <img height="150" src="https://github.com/mac999/check_scan_quality/blob/main/doc/run.PNG"/>
 
 # config
+this program supports variable option to visualize the results in cad, report.</br>
 ```json
 {
     "name": "check scan quality config",
