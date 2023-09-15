@@ -14,7 +14,9 @@ At each intersection of the grid drawn in AutoCAD, the height value of the input
 </p>
 
 # usage
+run terminal(cmd)</br>
 git clone https://github.com/mac999/check_scan_quality</br>
+conda install --file conda_requirements.txt</br>
 run autocad</br>
 load grid.dwg in autocad</br>
 python diff_cad_pcd.py</br>
