@@ -32,6 +32,52 @@ option</br>
 ex. python diff_cad_pcd.py --input sample_floor.pcd</br>
 <img height="150" src="https://github.com/mac999/check_scan_quality/blob/main/doc/run.PNG"/>
 
+# config
+'''json
+{
+    "name": "check scan quality config",
+    "version": "1.0.0",
+    "description": "check scan quality config",
+    "author": "mac999",
+    "email": "",
+    "check_height": {
+        "layer": "0",
+        "base_height": 0.0,
+        "distance_tolerance": 0.02,
+        "circle_radius": 0.1,
+        "text_height": 0.05,
+        "show_coord": true,
+        "show_height": true
+    },
+    "color_schema.height": [
+        {
+            "name": "green",
+            "index": 3,
+            "start": 0.0,
+            "end": 0.2
+        }, 
+        {
+            "name": "cyan",
+            "index": 4,
+            "start": 0.2,
+            "end": 0.4
+        }, 
+        {
+            "name": "yellow",
+            "index": 2,
+            "start": 0.4,
+            "end": 0.7
+        }, 
+        {
+            "name": "red",
+            "index": 1,
+            "start": 0.7,
+            "end": 1.01
+        }
+    ]
+}
+'''
+
 # test results
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output1.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output2.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output3.PNG"/>
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output5.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output6.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output7.PNG"/>
