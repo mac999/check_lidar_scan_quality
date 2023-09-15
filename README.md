@@ -16,7 +16,7 @@ At each intersection of the grid drawn in AutoCAD, the height value of the input
 # usage
 git clone https://github.com/mac999/check_scan_quality</br>
 run autocad</br>
-load grid.dwg in autocad/br>
+load grid.dwg in autocad</br>
 python diff_cad_pcd.py</br>
 </br>
 option</br>
@@ -28,12 +28,8 @@ option</br>
 --author: example=building points. help=maker of report</br>
 
 # test results
-<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output1.PNG"/>
-<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output2.PNG"/>
-<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output3.PNG"/>
-<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output5.PNG"/>
-<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output6.PNG"/>
-<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output7.PNG"/>
+<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output1.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output2.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output3.PNG"/>
+<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output5.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output6.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output7.PNG"/>
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output8.PNG"/>
 
 # version history
