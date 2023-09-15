@@ -33,7 +33,7 @@ ex. python diff_cad_pcd.py --input sample_floor.pcd</br>
 <img height="150" src="https://github.com/mac999/check_scan_quality/blob/main/doc/run.PNG"/>
 
 # config
-'''json
+```json
 {
     "name": "check scan quality config",
     "version": "1.0.0",
@@ -76,7 +76,7 @@ ex. python diff_cad_pcd.py --input sample_floor.pcd</br>
         }
     ]
 }
-'''
+```
 
 # test results
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output1.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output2.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output3.PNG"/>
