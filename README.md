@@ -9,8 +9,8 @@ At each intersection of the grid drawn in AutoCAD, the height value of the input
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/input1.PNG"/>
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/input2.PNG"/>
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/input3.PNG"/></br>
-<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output4.PNG"/>
-<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output9.PNG"/>
+<img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output4.PNG"/>
+<img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output9.PNG"/>
 </p>
 
 # usage
