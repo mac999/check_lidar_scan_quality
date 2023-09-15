@@ -26,6 +26,9 @@ option</br>
 --title: example=Scan Data Quality Control Report. help=title of report.</br>
 --date: example=2023-09-01. help=date of report.</br>
 --author: example=building points. help=maker of report</br>
+</br>
+ex. python diff_cad_pcd.py --input sample_floor.pcd</br>
+<img height="100" src="https://github.com/mac999/check_scan_quality/blob/main/doc/run.PNG"/>
 
 # test results
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output1.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output2.PNG"/><img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output3.PNG"/>
