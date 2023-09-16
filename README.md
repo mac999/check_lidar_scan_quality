@@ -20,7 +20,7 @@ At each intersection of the grid drawn in AutoCAD, the height value of the input
 </p>
 
 # usage
-download executable program in <link href="https://drive.google.com/drive/folders/1r_WErxpp5JMlvKBU-88S5SogaCY37fY5?usp=drive_link">here</link>.</br>
+download executable program in <a href="https://drive.google.com/drive/folders/1r_WErxpp5JMlvKBU-88S5SogaCY37fY5?usp=drive_link">here</a>.</br>
 or</br>
 run terminal(cmd)</br>
 git clone https://github.com/mac999/check_scan_quality</br>
