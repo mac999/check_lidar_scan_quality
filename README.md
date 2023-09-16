@@ -2,7 +2,7 @@
 3D scan data quality (version 0.1) checker
 
 <p align="center">
-<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/Animation.gif"/>
+<img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/Animation.gif"/>
 </p>
 
 # functions
