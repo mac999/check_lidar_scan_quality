@@ -1,6 +1,10 @@
 # check_scan_quality
 3D scan data quality (version 0.1) checker
 
+<p align="center">
+<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/Animation.gif"/>
+</p>
+
 # functions
 Introducing an open source that checks the quality of PCD (Point Cloud Data), 3D scan data. It is linked to AutoCAD, and if there is a grid in the drawing, the intersection point is automatically calculated, compared to the given point cloud height at that point, and analyzed. Errors are output to drawings, Excel, and reports according to a predefined color scheme. Options can be modified with config.json. Currently, I only developed the planarity check, and plan to update it periodically in the future. It provides various options so you can modify it and use it.</br></br>
 
