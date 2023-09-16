@@ -5,7 +5,7 @@
 # license: MIT
 # 
 import os, math, argparse, json, traceback, numpy as np, pandas as pd
-import pyautocad, lorem, open3d as o3d, seaborn as sns, win32com.client, pythoncom
+import pyautocad, open3d as o3d, seaborn as sns, win32com.client, pythoncom
 from math import pi
 import matplotlib.pyplot as plt
 from fpdf import FPDF
