@@ -1,4 +1,4 @@
-# check_scan_quality
+# check scan quality
 3D scan data quality (version 0.1) checker
 
 <p align="center">
