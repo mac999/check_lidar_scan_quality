@@ -4,13 +4,15 @@
 # description: difference between cad and pcd (scan data)
 # license: MIT
 # 
-import os, math, argparse, json, traceback, numpy as np, pandas as pd
+import os, math, argparse, json, traceback, numpy as np, pandas as pd, trimesh
 import pyautocad, open3d as o3d, seaborn as sns, win32com.client, pythoncom
-from math import pi
 import matplotlib.pyplot as plt
+from scipy.spatial import distance
+from math import pi
 from fpdf import FPDF
 
 _config = {}
+_option = ""	# 'planarity | verticality | features'
 
 def load_config(config_fname):
 	global _config
@@ -63,6 +65,27 @@ def get_intersects_from_acad(layer_name):
 			index += 3
 	else:
 		print("No intersection points found.")
+
+	return ints
+
+def get_ref_points_from_acad(point_layer_name):
+	# Connect to AutoCAD
+	acad = pyautocad.Autocad(create_if_not_exists=True)
+
+	# Get all existing line entities from the current drawing
+	points = [entity for entity in acad.iter_objects() if entity.EntityName == 'AcDbPoint' and entity.Layer == point_layer_name]
+
+	if not points:
+		print("No point entities found in the drawing.")
+		return
+
+	# Calculate intersection points
+	ints = []
+	for point in points:
+		x = point.InsertionPoint[0]
+		y = point.InsertionPoint[1]
+		z = point.InsertionPoint[2]
+		ints.append((x, y, z))
 
 	return ints
 
@@ -122,7 +145,7 @@ def get_max_diff(diffs):
 	return max
 
 def output_acad_diff(pcd, ints, diffs):
-	global _config
+	global _config, _option
 
 	if len(diffs) == 0:
 		return
@@ -140,7 +163,7 @@ def output_acad_diff(pcd, ints, diffs):
 		
 		text_height = _config['check_height']['text_height']
 		radius = _config['check_height']['circle_radius']
-		offset_x = radius * 1.5
+		offset_x = radius * 1.5			# TBD. option
 		offset_y = radius
 		for index, diff in enumerate(diffs):
 			ID = int(diff[0])
@@ -179,7 +202,20 @@ def load_point_cloud(file_path):
 	pcd = o3d.io.read_point_cloud(file_path)
 	return pcd
 
-def compare_pcd_diff(pcd, ints):
+def compute_signed_distance_and_closest_goemetry(target_mesh, query_points): # http://www.open3d.org/docs/latest/tutorial/geometry/distance_queries.html
+	''' closest_points = scene.compute_closest_points(query_points)
+	distance = np.linalg.norm(query_points - closest_points['points'].numpy(),
+							  axis=-1)
+	rays = np.concatenate([query_points, np.ones_like(query_points)], axis=-1)
+	intersection_counts = scene.count_intersections(rays).numpy()
+	is_inside = intersection_counts % 2 == 1
+	distance[is_inside] *= -1
+	return distance, closest_points['geometry_ids'].numpy() '''
+
+	points = trimesh.proximity.closest_point(target_mesh, [query_points]) # https://github.com/mikedh/trimesh/issues/1116
+	return points
+
+def compare_pcd_diff(target_mesh, pcd, ints):
 	global _config
 
 	z_differences = []
@@ -194,28 +230,44 @@ def compare_pcd_diff(pcd, ints):
 		# if math.fabs(intersection_point[0] - 2.5) < 0.001 and math.fabs(intersection_point[1] - 1.25) < 0.001:
 		# 	index = index
 
-		find_pt = pcd.points[idx[0]]
-		dist = get_2d_distance(find_pt, intersection_point)
+		find_pt_pcd = pcd.points[idx[0]]
+		dist = get_2d_distance(find_pt_pcd, intersection_point)
 		if dist > _config['check_height']['distance_tolerance']:
 			continue
 
-		z_intersection = intersection_point[2]
-		z_intersection += _config['check_height']['base_height']
-		z_nearest = find_pt[2]
+		closest_point_model = None
+		closest_points = compute_signed_distance_and_closest_goemetry(target_mesh, intersection_point)
+		for cp in closest_points[0]:
+			closest_point_model = tuple(cp)
+			diff_distance = distance.euclidean(intersection_point, closest_point_model)
 
-		z_difference = z_nearest - z_intersection
+		z_nearest_pcd = find_pt_pcd[2]
+
+		z_intersection_model = closest_point_model[2]
+		z_intersection_model += _config['check_height']['base_height']
+
+		z_difference = z_nearest_pcd - z_intersection_model
 		z_differences.append((index + 1, intersection_point[0], intersection_point[1], intersection_point[2], z_difference))
 
 	z_differences = np.array(z_differences)
 	return z_differences    
 
+def get_plane_mesh(z = 0.0):
+	plane = trimesh.creation.box(extents=[1000, 1000, 0.0001])
+	# plane = plane.apply_translation([0, 0, -0.0001])
+	return plane
+
 def check_flatness(input_fname):
 	global _config
 	try:
-		ints = get_intersects_from_acad(_config['check_height']['layer'])
+		ints = get_intersects_from_acad(_config['check_height']['grid_layer'])
+		if 'point_layer' in _config['check_height']:
+			ints2 = get_ref_points_from_acad(_config['check_height']['point_layer'])
+			ints.append(ints2)
 
+		mesh = get_plane_mesh(z = 0.0)
 		pcd = load_point_cloud(input_fname)
-		diffs = compare_pcd_diff(pcd, ints)
+		diffs = compare_pcd_diff(mesh, pcd, ints)
 
 		return pcd, ints, diffs
 	except:
@@ -360,12 +412,15 @@ def output_report(output_fname, title, author, date, pcd, diffs):
 		pass
 
 def main():
+	global _config, _option
+
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--input', default='.\\sample_floor.pcd', help='input scan data file (pcd).')
 	parser.add_argument('--output', default='.\\output', help='output excel and report(pdf) file.')
+	parser.add_argument('--option', default='planarity', help='planarity | verticality | features')
 	parser.add_argument('--config', default='.\\config.json', help='input config.json file.')
 	parser.add_argument('--title', default='Scan Data Quality Control Report', help='title of report.')
-	parser.add_argument('--date', default='2023-09-01', help='date of report.')
+	parser.add_argument('--date', default='2023-09-0+1', help='date of report.')
 	parser.add_argument('--author', default='building points', help='maker of report')
 
 	args = parser.parse_args()
@@ -373,10 +428,15 @@ def main():
 	try:
 		load_config(args.config)
 
-		pcd, ints, diffs = check_flatness(args.input)
-		output_acad_diff(pcd, ints, diffs)
-		output_excel(args.output + ".xlsx", pcd, diffs)
-		output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
+		_option = args.option
+
+		if args.option == 'planarity':
+			pcd, ints, diffs = check_flatness(args.input)
+			output_acad_diff(pcd, ints, diffs)
+			output_excel(args.output + ".xlsx", pcd, diffs)
+			output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
+		else:
+			pass
 
 	except:
 		traceback.print_exc()
