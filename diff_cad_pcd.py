@@ -218,62 +218,79 @@ def compute_signed_distance_and_closest_goemetry(target_mesh, query_points): # h
 def compare_pcd_diff(target_mesh, pcd, ints):
 	global _config
 
-	z_differences = []
-
-	pcd_tree = o3d.geometry.KDTreeFlann(pcd)
-
-	for index, intersection_point in enumerate(ints):
-		_, idx, _ = pcd_tree.search_knn_vector_3d(intersection_point, 3)
-		if idx == None or len(idx) == 0:
-			continue
-
-		# if math.fabs(intersection_point[0] - 2.5) < 0.001 and math.fabs(intersection_point[1] - 1.25) < 0.001:
-		# 	index = index
-
-		find_pt_pcd = pcd.points[idx[0]]
-		dist = get_2d_distance(find_pt_pcd, intersection_point)
-		if dist > _config['check_height']['distance_tolerance']:
-			continue
-
-		closest_point_model = None
-		closest_points = compute_signed_distance_and_closest_goemetry(target_mesh, intersection_point)
-		for cp in closest_points[0]:
-			closest_point_model = tuple(cp)
-			diff_distance = distance.euclidean(intersection_point, closest_point_model)
-
-		z_nearest_pcd = find_pt_pcd[2]
-
-		z_intersection_model = closest_point_model[2]
-		z_intersection_model += _config['check_height']['base_height']
-
-		z_difference = z_nearest_pcd - z_intersection_model
-		z_differences.append((index + 1, intersection_point[0], intersection_point[1], intersection_point[2], z_difference))
-
-	z_differences = np.array(z_differences)
-	return z_differences    
-
-def get_plane_mesh(z = 0.0):
-	plane = trimesh.creation.box(extents=[1000, 1000, 0.0001])
-	# plane = plane.apply_translation([0, 0, -0.0001])
-	return plane
-
-def check_flatness(input_fname):
-	global _config
 	try:
-		ints = get_intersects_from_acad(_config['check_height']['grid_layer'])
-		if 'point_layer' in _config['check_height']:
-			ints2 = get_ref_points_from_acad(_config['check_height']['point_layer'])
-			ints.append(ints2)
+		z_differences = []
 
-		mesh = get_plane_mesh(z = 0.0)
-		pcd = load_point_cloud(input_fname)
-		diffs = compare_pcd_diff(mesh, pcd, ints)
+		pcd_tree = o3d.geometry.KDTreeFlann(pcd)
 
-		return pcd, ints, diffs
+		for index, intersection_point in enumerate(ints):
+			if intersection_point == None:
+				continue
+			_, idx, _ = pcd_tree.search_knn_vector_3d(intersection_point, 3)
+			if idx == None or len(idx) == 0:
+				continue
+
+			# if math.fabs(intersection_point[0] - 2.5) < 0.001 and math.fabs(intersection_point[1] - 1.25) < 0.001:
+			# 	index = index
+
+			find_pt_pcd = pcd.points[idx[0]]
+			dist = get_2d_distance(find_pt_pcd, intersection_point)
+			if dist > _config['check_height']['distance_tolerance']:
+				continue
+
+			closest_point_model = None
+			closest_points = compute_signed_distance_and_closest_goemetry(target_mesh, intersection_point)
+			for cp in closest_points[0]:
+				closest_point_model = tuple(cp)
+				diff_distance = distance.euclidean(intersection_point, closest_point_model)
+
+			z_nearest_pcd = find_pt_pcd[2]
+
+			z_intersection_model = closest_point_model[2]
+			z_intersection_model += _config['check_height']['base_height']
+
+			z_difference = z_nearest_pcd - z_intersection_model
+			z_differences.append((index + 1, intersection_point[0], intersection_point[1], intersection_point[2], z_difference))
+
+		z_differences = np.array(z_differences)
 	except:
 		traceback.print_exc()
 		pass
-	return None, None, None
+
+	return z_differences    
+
+def get_plane_mesh(z = 0.0):
+	plane = trimesh.creation.box(extents=[100000, 100000, 1.0])
+	plane = plane.apply_translation([0, 0, -0.5])
+	return plane
+
+def get_check_points_from_acad(config):
+	ints = get_intersects_from_acad(config['check_height']['grid_layer'])
+	if 'point_layer' in config['check_height']:
+		ints2 = get_ref_points_from_acad(config['check_height']['point_layer'])
+		if ints2 != None and len(ints2):
+			ints.extend(ints2)
+	return ints
+
+def check_flatness(input_fname):
+	global _config
+	ints = get_check_points_from_acad(_config)
+
+	mesh = get_plane_mesh(z = 0.0)
+	pcd = load_point_cloud(input_fname)
+	diffs = compare_pcd_diff(mesh, pcd, ints)
+
+	return pcd, ints, diffs
+
+def check_model(input_fname, model_fname):
+	global _config
+	ints = get_check_points_from_acad(_config)
+
+	mesh = trimesh.load(model_fname)
+	pcd = load_point_cloud(input_fname)
+	diffs = compare_pcd_diff(mesh, pcd, ints)
+
+	return pcd, ints, diffs
 
 def output_excel(output_fname, pcd, diffs):
 	try:
@@ -416,8 +433,9 @@ def main():
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--input', default='.\\sample_floor.pcd', help='input scan data file (pcd).')
+	parser.add_argument('--model', default='', help='input model file (obj, stl, ply, off).')
 	parser.add_argument('--output', default='.\\output', help='output excel and report(pdf) file.')
-	parser.add_argument('--option', default='planarity', help='planarity | verticality | features')
+	parser.add_argument('--option', default='planarity', help='planarity | verticality | features | model')
 	parser.add_argument('--config', default='.\\config.json', help='input config.json file.')
 	parser.add_argument('--title', default='Scan Data Quality Control Report', help='title of report.')
 	parser.add_argument('--date', default='2023-09-0+1', help='date of report.')
@@ -432,6 +450,11 @@ def main():
 
 		if args.option == 'planarity':
 			pcd, ints, diffs = check_flatness(args.input)
+			output_acad_diff(pcd, ints, diffs)
+			output_excel(args.output + ".xlsx", pcd, diffs)
+			output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
+		elif args.option == 'model':
+			pcd, ints, diffs = check_model(args.input, args.model)
 			output_acad_diff(pcd, ints, diffs)
 			output_excel(args.output + ".xlsx", pcd, diffs)
 			output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
