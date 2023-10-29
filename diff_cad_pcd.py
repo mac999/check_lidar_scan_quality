@@ -6,8 +6,10 @@
 # 
 import os, math, argparse, json, traceback, numpy as np, pandas as pd, trimesh
 import pyautocad, open3d as o3d, seaborn as sns, win32com.client, pythoncom
+from jakteristics import FEATURE_NAMES, extension, las_utils, utils
 import matplotlib.pyplot as plt
 from scipy.spatial import distance
+from tqdm import trange, tqdm
 from math import pi
 from fpdf import FPDF
 
@@ -144,7 +146,7 @@ def get_max_diff(diffs):
 		max = min
 	return max
 
-def output_acad_diff(pcd, ints, diffs):
+def output_acad_diff_model(diffs):
 	global _config, _option
 
 	if len(diffs) == 0:
@@ -160,12 +162,43 @@ def output_acad_diff(pcd, ints, diffs):
 		hatchs = add_acad_hatch(acad_model, color_schema)
 
 		max = get_max_diff(diffs)
-		
+		for index, diff in enumerate(diffs):
+			ID = int(diff[0])
+			pt = diff[1:4]
+			p1 = APoint(pt[0], pt[1], pt[2])
+
+			value = math.fabs(diff[4]) / max
+			diff_index = get_color_schema_index(color_schema, value)	# https://gohtx.com/acadcolors.php
+
+			out_loop = []
+			ent = acad_model.AddPoint(p1)
+
+	except:
+		traceback.print_exc()
+		pass
+
+def output_acad_diff(diffs):
+	global _config, _option
+
+	if len(diffs) == 0:
+		return
+
+	add_acad_layer("scan_diff")
+
+	try:		
+		acad = win32com.client.Dispatch("AutoCAD.Application")
+		acad_model = acad.ActiveDocument.ModelSpace
+
+		color_schema = _config['color_schema.height']
+		hatchs = add_acad_hatch(acad_model, color_schema)
+
+		max = get_max_diff(diffs)
+
 		text_height = _config['check_height']['text_height']
 		radius = _config['check_height']['circle_radius']
 		offset_x = radius * 1.5			# TBD. option
 		offset_y = radius
-		for index, diff in enumerate(diffs):
+		for index, diff in tqdm(enumerate(diffs), desc='output cad'):
 			ID = int(diff[0])
 			pt = diff[1:4]
 			p1 = APoint(pt[0], pt[1])
@@ -212,8 +245,33 @@ def compute_signed_distance_and_closest_goemetry(target_mesh, query_points): # h
 	distance[is_inside] *= -1
 	return distance, closest_points['geometry_ids'].numpy() '''
 
-	points = trimesh.proximity.closest_point(target_mesh, [query_points]) # https://github.com/mikedh/trimesh/issues/1116
-	return points
+	dataset = trimesh.proximity.closest_point(target_mesh, query_points) # https://github.com/mikedh/trimesh/issues/1116
+	return dataset
+
+def compare_pcd_model_diff(target_mesh, pcd):
+	global _config
+
+	diffs = []
+	try:
+		for index, vertex in tqdm(enumerate(pcd.points), desc='calculate model difference'):
+			closest_points, diff_distances, indics = compute_signed_distance_and_closest_goemetry(target_mesh, [vertex])
+			if len(closest_points) == 0:
+				continue
+			
+			min_index = np.argmin(diff_distances)
+			diff_distance = diff_distances[min_index]
+			min_point = closest_points[min_index]
+			if diff_distance > _config['check_model']['min_distance']:
+				continue
+
+			diffs.append((min_point[0], min_point[1], min_point[2], diff_distance))
+
+		diffs = np.array(diffs)
+	except:
+		traceback.print_exc()
+		pass
+
+	return diffs
 
 def compare_pcd_diff(target_mesh, pcd, ints):
 	global _config
@@ -223,7 +281,7 @@ def compare_pcd_diff(target_mesh, pcd, ints):
 
 		pcd_tree = o3d.geometry.KDTreeFlann(pcd)
 
-		for index, intersection_point in enumerate(ints):
+		for index, intersection_point in tqdm(enumerate(ints), desc='calculate difference'):
 			if intersection_point == None:
 				continue
 			_, idx, _ = pcd_tree.search_knn_vector_3d(intersection_point, 3)
@@ -283,14 +341,17 @@ def check_flatness(input_fname):
 	return pcd, ints, diffs
 
 def check_model(input_fname, model_fname):
-	global _config
-	ints = get_check_points_from_acad(_config)
+	mesh = trimesh.load_mesh(model_fname)	# issue: rotated by 90 degree (x-axis)
+	angle = math.pi / 2
+	direction = [1, 0, 0]
+	center = [0, 0, 0]
+	rot_matrix = trimesh.transformations.rotation_matrix(angle, direction, center)
+	mesh.apply_transform(rot_matrix)
 
-	mesh = trimesh.load(model_fname)
 	pcd = load_point_cloud(input_fname)
-	diffs = compare_pcd_diff(mesh, pcd, ints)
+	diffs = compare_pcd_model_diff(mesh, pcd)
 
-	return pcd, ints, diffs
+	return pcd, diffs
 
 def output_excel(output_fname, pcd, diffs):
 	try:
@@ -306,6 +367,18 @@ def output_excel(output_fname, pcd, diffs):
 			df = pd.concat([df, pd.DataFrame([[ID, x, y, z, d]], columns=['ID', 'X', 'Y', 'Z', 'Diff'])])
 
 		df.to_excel(output_fname, index=False, sheet_name='Difference')
+	except:
+		traceback.print_exc()
+		pass
+
+def output_pcd(output_fname, diffs):
+	try:
+		pcd = o3d.geometry.PointCloud()
+
+		# xyz = np.concatenate((diffs[:, 1:3], diffs[:, 4:5]), axis=1)
+		pcd.points = o3d.utility.Vector3dVector(diffs[:, 0:3])
+		o3d.io.write_point_cloud(output_fname, pcd)
+
 	except:
 		traceback.print_exc()
 		pass
@@ -433,9 +506,11 @@ def main():
 
 	parser = argparse.ArgumentParser()
 	parser.add_argument('--input', default='.\\sample_floor.pcd', help='input scan data file (pcd).')
-	parser.add_argument('--model', default='', help='input model file (obj, stl, ply, off).')
+	# parser.add_argument('--model', default='', help='input model file (obj, stl, ply, off).')
+	parser.add_argument('--model', default='simple_mesh.obj', help='input model file (obj, stl, ply, off).')
 	parser.add_argument('--output', default='.\\output', help='output excel and report(pdf) file.')
-	parser.add_argument('--option', default='planarity', help='planarity | verticality | features | model')
+	# parser.add_argument('--option', default='planarity', help='planarity | verticality | features | model')
+	parser.add_argument('--option', default='model', help='planarity | verticality | features | model')
 	parser.add_argument('--config', default='.\\config.json', help='input config.json file.')
 	parser.add_argument('--title', default='Scan Data Quality Control Report', help='title of report.')
 	parser.add_argument('--date', default='2023-09-0+1', help='date of report.')
@@ -450,14 +525,15 @@ def main():
 
 		if args.option == 'planarity':
 			pcd, ints, diffs = check_flatness(args.input)
-			output_acad_diff(pcd, ints, diffs)
+			output_acad_diff(diffs)
 			output_excel(args.output + ".xlsx", pcd, diffs)
 			output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
 		elif args.option == 'model':
-			pcd, ints, diffs = check_model(args.input, args.model)
-			output_acad_diff(pcd, ints, diffs)
-			output_excel(args.output + ".xlsx", pcd, diffs)
-			output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
+			pcd, diffs = check_model(args.input, args.model)
+			output_pcd(args.output + ".pcd", diffs)
+			# output_acad_diff_model(diffs)
+			# output_excel(args.output + ".xlsx", pcd, diffs)
+			# output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
 		else:
 			pass
 
