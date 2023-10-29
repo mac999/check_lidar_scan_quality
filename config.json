@@ -5,13 +5,18 @@
     "author": "mac999",
     "email": "",
     "check_height": {
-        "layer": "0",
+        "grid_layer": "0",
+        "point_layer": "1",
         "base_height": 0.0,
         "distance_tolerance": 0.02,
         "circle_radius": 0.1,
         "text_height": 0.05,
         "show_coord": true,
         "show_height": true
+    },
+    "check_model": {
+        "min_distance": 10.0,
+        "lod": 5
     },
     "color_schema.height": [
         {
