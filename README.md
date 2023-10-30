@@ -31,6 +31,7 @@ python diff_cad_pcd.py</br>
 </br>
 option</br>
 --input: example=sample_floor.pcd. help=input scan data file (pcd).</br>
+--model: example=simple_mesh.obj. help=input model file (obj, stl, ply, off).</br>
 --output: example=output. help=output excel and report(pdf) file.</br>
 --config: example=config.json. help=input config.json file.</br>
 --title: example=Scan Data Quality Control Report. help=title of report.</br>
@@ -57,6 +58,9 @@ this program supports variable option to visualize the results in cad, report.</
         "text_height": 0.05,
         "show_coord": true,
         "show_height": true
+    },
+    "check_model": {
+        "min_distance": 10.0
     },
     "color_schema.height": [
         {
@@ -95,6 +99,12 @@ this program supports variable option to visualize the results in cad, report.</
 # version history
 0.1: draft version.</br>
 0.2: update difference between PCD and mesh object.</br>
+
+# future plan
+supports</br></br>
+Features(curvature ...) generation from PCD</br>
+LiDAR file format support such as E57</br>
+BIM comparison and analysis</br>
 
 
 # about
