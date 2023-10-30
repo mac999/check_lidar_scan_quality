@@ -10,13 +10,16 @@ Introducing an open source that checks the quality of PCD (Point Cloud Data), 3D
 
 1. deviation between 3D scan data (point cloud data) and the grid of autocad drawing.
 At each intersection of the grid drawn in AutoCAD, the height value of the input point group is checked, and the deviation is calculated, analyzed, and visualized.
-
 <p align="center">
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/input1.PNG"/>
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/input2.PNG"/>
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/input3.PNG"/></br>
 <img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output4.PNG"/>
 <img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/output9.PNG"/>
+</p>
+
+2. comparison between Model (mesh) and 3D scan data (point cloud data).
+<p align="center">
 <img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model2.JPG"/>
 </p>
 
