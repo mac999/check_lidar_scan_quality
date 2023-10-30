@@ -20,6 +20,7 @@ At each intersection of the grid drawn in AutoCAD, the height value of the input
 
 2. comparison between Model (mesh) and 3D scan data (point cloud data).
 <p align="center">
+<img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model1.JPG"/>
 <img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model2.JPG"/>
 </p>
 
