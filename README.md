@@ -106,7 +106,7 @@ this program supports variable option to visualize the results in cad, report.</
 0.2: update difference between PCD and mesh object.</br>
 
 # future plan
-supports</br></br>
+will support</br>
 Features(curvature ...) generation from PCD</br>
 LiDAR file format support such as E57</br>
 BIM comparison and analysis</br>
