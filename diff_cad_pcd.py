@@ -4,7 +4,7 @@
 # description: difference between cad and pcd (scan data)
 # license: MIT
 # 
-import os, math, argparse, json, traceback, numpy as np, pandas as pd, trimesh
+import os, math, argparse, json, traceback, numpy as np, pandas as pd, trimesh, laspy
 import pyautocad, open3d as o3d, seaborn as sns, win32com.client, pythoncom
 from jakteristics import FEATURE_NAMES, extension, las_utils, utils
 import matplotlib.pyplot as plt
@@ -231,8 +231,40 @@ def output_acad_diff(diffs):
 		traceback.print_exc()
 		pass
 
+def convert_las_to_pcd(infile, outfile):
+	pipe_data = {
+		"pipeline": [
+			infile, 
+			{
+			"type":"filters.transformation",
+			"matrix":"1  0  0  0  0  1  0  0  0  0  1  0  0  0  0  1"
+			}, 
+			{
+			"type":"writers.pcd",
+			"filename":outfile
+			} 
+		]
+	}
+
+	pdal_pipeline = str(Path(__file__).parent) + "/las_to_pcd_pipeline.json"
+	with open(pdal_pipeline, 'w') as f:
+		json.dump(pipe_data, f)
+
+	cmd = ["pdal", "pipeline", pdal_pipeline]
+
+	ret = subprocess.call(cmd) 
+	print(ret)
+
 def load_point_cloud(file_path):
-	pcd = o3d.io.read_point_cloud(file_path)
+	pcd = None
+
+	fname, ext = os.path.splitext(file_path)
+	if ext == '.las':
+		xyz = las_utils.read_las_xyz(file_path)
+		pcd = o3d.geometry.PointCloud()
+		pcd.points = o3d.utility.Vector3dVector(xyz)
+	else:
+		pcd = o3d.io.read_point_cloud(file_path + ".pcd")
 	return pcd
 
 def compute_signed_distance_and_closest_goemetry(target_mesh, query_points): # http://www.open3d.org/docs/latest/tutorial/geometry/distance_queries.html
@@ -371,14 +403,23 @@ def output_excel(output_fname, pcd, diffs):
 		traceback.print_exc()
 		pass
 
-def output_pcd(output_fname, diffs):
+def output_pcd(input_path, output_path, diffs):
 	try:
+		'''
 		pcd = o3d.geometry.PointCloud()
-
 		# xyz = np.concatenate((diffs[:, 1:3], diffs[:, 4:5]), axis=1)
 		pcd.points = o3d.utility.Vector3dVector(diffs[:, 0:3])
 		o3d.io.write_point_cloud(output_fname, pcd)
-
+		'''
+		FEATURE_NAMES = [
+			"tan_x",
+			"tan_y",
+			"tan_z",		
+			"diff"
+		]
+		# features = np.concatenate((diffs[:, 0:3], diffs[:, 3:4]), axis=1)
+		
+		las_utils.write_with_extra_dims(input_path, output_path, diffs, FEATURE_NAMES)		
 	except:
 		traceback.print_exc()
 		pass
@@ -505,8 +546,9 @@ def main():
 	global _config, _option
 
 	parser = argparse.ArgumentParser()
-	parser.add_argument('--input', default='.\\sample_floor.pcd', help='input scan data file (pcd).')
+	# parser.add_argument('--input', default='.\\sample_floor.pcd', help='input scan data file (pcd).')
 	# parser.add_argument('--model', default='', help='input model file (obj, stl, ply, off).')
+	parser.add_argument('--input', default='.\\sample_floor.las', help='input scan data file (pcd).')
 	parser.add_argument('--model', default='simple_mesh.obj', help='input model file (obj, stl, ply, off).')
 	parser.add_argument('--output', default='.\\output', help='output excel and report(pdf) file.')
 	# parser.add_argument('--option', default='planarity', help='planarity | verticality | features | model')
@@ -530,7 +572,7 @@ def main():
 			output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
 		elif args.option == 'model':
 			pcd, diffs = check_model(args.input, args.model)
-			output_pcd(args.output + ".pcd", diffs)
+			output_pcd(args.input, args.output + ".las", diffs)
 			# output_acad_diff_model(diffs)
 			# output_excel(args.output + ".xlsx", pcd, diffs)
 			# output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
