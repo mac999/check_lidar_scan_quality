@@ -103,7 +103,7 @@ this program supports variable option to visualize the results in cad, report.</
 
 # version history
 0.1: draft version.</br>
-0.2: update difference between PCD and mesh object.</br>
+0.2: under developing, updating difference between PCD and mesh object.</br>
 
 # future plan
 will support</br>
