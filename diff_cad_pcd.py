@@ -3,6 +3,10 @@
 # date: 2023.8.1
 # description: difference between cad and pcd (scan data)
 # license: MIT
+# version
+#   0.1. 2023.8.1. first release.
+#   0.2. 2023.10.2. update difference between PCD and mesh object.
+#   0.3. fixed bug. 
 # 
 import os, math, argparse, json, traceback, numpy as np, pandas as pd, trimesh, laspy
 import pyautocad, open3d as o3d, seaborn as sns, win32com.client, pythoncom
@@ -264,7 +268,7 @@ def load_point_cloud(file_path):
 		pcd = o3d.geometry.PointCloud()
 		pcd.points = o3d.utility.Vector3dVector(xyz)
 	else:
-		pcd = o3d.io.read_point_cloud(file_path + ".pcd")
+		pcd = o3d.io.read_point_cloud(file_path)
 	return pcd
 
 def compute_signed_distance_and_closest_goemetry(target_mesh, query_points): # http://www.open3d.org/docs/latest/tutorial/geometry/distance_queries.html
@@ -277,7 +281,20 @@ def compute_signed_distance_and_closest_goemetry(target_mesh, query_points): # h
 	distance[is_inside] *= -1
 	return distance, closest_points['geometry_ids'].numpy() '''
 
-	dataset = trimesh.proximity.closest_point(target_mesh, query_points) # https://github.com/mikedh/trimesh/issues/1116
+	dataset = trimesh.proximity.closest_point(target_mesh, query_points) # https://trimesh.org/trimesh.proximity.html#trimesh.proximity.closest_point  # https://github.com/mikedh/trimesh/issues/1116
+	if dataset == None or len(dataset) == 0:
+		return None, None, None
+
+	tar_point = query_points[0]
+	index = dataset[2][0]
+	triangle_vertices = target_mesh.triangles[index]
+	v1 = triangle_vertices[1] - triangle_vertices[0]
+	v2 = triangle_vertices[2] - triangle_vertices[0]
+	normal = np.cross(v1, v2)
+	d = -np.dot(normal, triangle_vertices[0])	# Calculate the d value for the plane equation
+	t = -(np.dot(normal, tar_point) + d) / np.dot(normal, normal)	# Calculate the t value for the line equation
+	intersection_point = tar_point + t * normal	# Calculate the intersection point
+
 	return dataset
 
 def compare_pcd_model_diff(target_mesh, pcd):
@@ -410,16 +427,35 @@ def output_pcd(input_path, output_path, diffs):
 		# xyz = np.concatenate((diffs[:, 1:3], diffs[:, 4:5]), axis=1)
 		pcd.points = o3d.utility.Vector3dVector(diffs[:, 0:3])
 		o3d.io.write_point_cloud(output_fname, pcd)
-		'''
-		FEATURE_NAMES = [
-			"tan_x",
-			"tan_y",
-			"tan_z",		
-			"diff"
-		]
 		# features = np.concatenate((diffs[:, 0:3], diffs[:, 3:4]), axis=1)
-		
-		las_utils.write_with_extra_dims(input_path, output_path, diffs, FEATURE_NAMES)		
+		# input_path's extension is pcd
+		'''
+		ext = os.path.splitext(input_path)[1]
+		ext = ext.lower()
+		if ext == '.pcd':
+			header = laspy.LasHeader(point_format=3, version="1.2")
+			# header.scales = np.array([1, 1, 1])			
+			with laspy.open("input_las.las", mode="w", header=header) as writer:
+				point_record = laspy.ScaleAwarePointRecord.zeros(diffs.shape[0], header=header)
+				point_record.x = diffs[:, 0]	# https://laspy.readthedocs.io/en/latest/examples.html
+				point_record.y = diffs[:, 1]
+				point_record.z = diffs[:, 2]
+
+				writer.write_points(point_record)
+
+			FEATURE_NAMES = [
+				"diff"
+			]
+			las_utils.write_with_extra_dims("input_las.las", output_path, diffs, FEATURE_NAMES)
+
+		elif ext == '.las':
+			FEATURE_NAMES = [
+				"tan_x",
+				"tan_y",
+				"tan_z",		
+				"diff"
+			]
+			las_utils.write_with_extra_dims(input_path, output_path, diffs, FEATURE_NAMES)		
 	except:
 		traceback.print_exc()
 		pass
@@ -548,8 +584,10 @@ def main():
 	parser = argparse.ArgumentParser()
 	# parser.add_argument('--input', default='.\\sample_floor.pcd', help='input scan data file (pcd).')
 	# parser.add_argument('--model', default='', help='input model file (obj, stl, ply, off).')
-	parser.add_argument('--input', default='.\\sample_floor.las', help='input scan data file (pcd).')
-	parser.add_argument('--model', default='simple_mesh.obj', help='input model file (obj, stl, ply, off).')
+	# parser.add_argument('--input', default='.\\sample_floor.las', help='input scan data file (pcd).')
+	# parser.add_argument('--model', default='simple_mesh.obj', help='input model file (obj, stl, ply, off).')
+	parser.add_argument('--input', default='.\\output_uniform.pcd', help='input scan data file (las, pcd).')
+	parser.add_argument('--model', default='model_complex.obj', help='input model file (obj, stl, ply, off).')
 	parser.add_argument('--output', default='.\\output', help='output excel and report(pdf) file.')
 	# parser.add_argument('--option', default='planarity', help='planarity | verticality | features | model')
 	parser.add_argument('--option', default='model', help='planarity | verticality | features | model')
@@ -577,7 +615,7 @@ def main():
 			# output_excel(args.output + ".xlsx", pcd, diffs)
 			# output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
 		else:
-			pass
+			print('option is not supported.')
 
 	except:
 		traceback.print_exc()
