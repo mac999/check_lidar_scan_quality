@@ -111,7 +111,6 @@ Features(curvature ...) generation from PCD</br>
 LiDAR file format support such as E57</br>
 BIM comparison and analysis</br>
 
-
-# about
+# license
 develop by taewook kang(laputa99999@gmail.com).
 MIT license.
