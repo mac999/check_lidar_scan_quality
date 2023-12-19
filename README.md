@@ -1,5 +1,5 @@
 # check scan quality
-3D scan data quality (version 0.1) checker
+3D scan data quality (version 0.2) checker
 
 <p align="center">
 <img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/Animation.gif"/>
@@ -21,7 +21,11 @@ At each intersection of the grid drawn in AutoCAD, the height value of the input
 2. comparison between Model (mesh) and 3D scan data (point cloud data).
 <p align="center">
 <img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model1.JPG"/>
-<img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model2.JPG"/>
+<img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model2.JPG"/></br>
+<img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model_output1.JPG"/>
+<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model_output2.JPG"/></br>
+<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model_output3.JPG"/>
+<img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model_output4.JPG"/>
 </p>
 
 # usage
@@ -103,7 +107,7 @@ this program supports variable option to visualize the results in cad, report.</
 
 # version history
 0.1: draft version.</br>
-0.2: under developing, updating difference between PCD and mesh object.</br>
+0.2: updating difference between PCD and mesh object.</br>
 
 # future plan
 will support</br>
