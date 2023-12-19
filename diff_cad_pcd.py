@@ -383,8 +383,9 @@ def compare_pcd_model_diff(target_mesh, pcd):
 			if diff_distance > _config['check_model']['min_distance']:
 				print('over min distance of config.json')
 				continue
-
-			diffs.append((vertex[0], vertex[1], vertex[2], diff_distance))
+			
+			diffs.append((index, closest_points[0][0], closest_points[0][1], closest_points[0][2], diff_distance))
+			# diffs.append((index, vertex[0], vertex[1], vertex[2], diff_distance))
 
 		diffs = np.array(diffs)
 	except:
@@ -497,11 +498,11 @@ def output_excel_model_diff_state(output_fname, pcd, diffs):
 		df = pd.DataFrame(columns=['ID', 'X', 'Y', 'Z', 'Diff'])
 
 		for index, diff in enumerate(diffs):
-			ID = index
-			x = diff[0]
-			y = diff[1]
-			z = diff[2]
-			d = diff[3]
+			ID = int(diff[0])
+			x = pcd.points[ID][0]
+			y = pcd.points[ID][1]
+			z = pcd.points[ID][2]
+			d = diff[4]
 
 			if ID % 1000 == 0:
 				print(f'point {ID} = ({x:.2f}, {y:.2f}, {z:.2f}), diff = {d:.3f}')
@@ -523,7 +524,7 @@ def output_excel_model_diff_state(output_fname, pcd, diffs):
 		traceback.print_exc()
 		pass
 
-def output_pcd(input_path, output_path, diffs):
+def output_pcd_las(input_path, output_path, pcd, diffs):
 	try:
 		'''
 		pcd = o3d.geometry.PointCloud()
@@ -544,25 +545,44 @@ def output_pcd(input_path, output_path, diffs):
 			# header.scales = np.array([1, 1, 1])			
 			with laspy.open("input_las.las", mode="w", header=header) as writer:
 				point_record = laspy.ScaleAwarePointRecord.zeros(diffs.shape[0], header=header)
-				point_record.x = diffs[:, 0]	# https://laspy.readthedocs.io/en/latest/examples.html
-				point_record.y = diffs[:, 1]
-				point_record.z = diffs[:, 2]
+
+				x_list = []
+				y_list = []
+				z_list = []
+				for diff in diffs:
+					index = int(diff[0])
+					x_list.append(pcd.points[index][0])
+					y_list.append(pcd.points[index][1])
+					z_list.append(pcd.points[index][2])
+
+				point_record.x = np.asarray(x_list)
+				point_record.y = np.asarray(y_list)
+				point_record.z = np.asarray(z_list)
 
 				writer.write_points(point_record)
 
 			FEATURE_NAMES = [
 				"diff"
 			]
-			las_utils.write_with_extra_dims("input_las.las", output_path, diffs[:, 3:4], FEATURE_NAMES)
+			las_utils.write_with_extra_dims("input_las.las", output_path + '.las', diffs[:, 4:5], FEATURE_NAMES)
+
+			header = laspy.LasHeader(point_format=3, version="1.2")
+			with laspy.open(output_path + '_tangent.las', mode="w", header=header) as writer:
+				point_record = laspy.ScaleAwarePointRecord.zeros(diffs.shape[0], header=header)
+				point_record.x = diffs[:, 1]	# https://laspy.readthedocs.io/en/latest/examples.html
+				point_record.y = diffs[:, 2]
+				point_record.z = diffs[:, 3]
+				writer.write_points(point_record)
 
 		elif ext == '.las':
 			FEATURE_NAMES = [
+				"index",
 				"tan_x",
 				"tan_y",
 				"tan_z",		
 				"diff"
 			]
-			las_utils.write_with_extra_dims(input_path, output_path, diffs, FEATURE_NAMES)		
+			las_utils.write_with_extra_dims(input_path, output_path + ".las", diffs, FEATURE_NAMES)		
 	except:
 		traceback.print_exc()
 		pass
@@ -695,7 +715,7 @@ def main():
 	# parser.add_argument('--model', default='simple_mesh.obj', help='input model file (obj, stl, ply, off).')
 	parser.add_argument('--input', default='.\\output_uniform.pcd', help='input scan data file (las, pcd).')
 	parser.add_argument('--model', default='model_complex.obj', help='input model file (obj, stl, ply, off).')
-	parser.add_argument('--output', default='.\\output', help='output excel and report(pdf) file.')
+	parser.add_argument('--output', default='.\\output', help='output las, pcd, excel and report(pdf) file.')
 	# parser.add_argument('--option', default='planarity', help='planarity | verticality | features | model')
 	parser.add_argument('--option', default='model', help='planarity | verticality | features | model')
 	parser.add_argument('--config', default='.\\config.json', help='input config.json file.')
@@ -717,7 +737,7 @@ def main():
 			output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
 		elif args.option == 'model':
 			pcd, diffs = check_model(args.input, args.model)
-			output_pcd(args.input, args.output + ".las", diffs)
+			output_pcd_las(args.input, args.output, pcd, diffs)
 			output_excel_model_diff_state(args.output + ".xlsx", pcd, diffs)
 			# output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
 		else:
