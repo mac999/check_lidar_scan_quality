@@ -271,7 +271,22 @@ def load_point_cloud(file_path):
 		pcd = o3d.io.read_point_cloud(file_path)
 	return pcd
 
-def compute_signed_distance_and_closest_goemetry(target_mesh, query_points): # http://www.open3d.org/docs/latest/tutorial/geometry/distance_queries.html
+def create_material(shader, base_color, thickness = 0.0, transmission = 0.0, absorption_color = [0.0,0.0,0.0], point_size = 0.0):
+	mat = o3d.visualization.rendering.MaterialRecord()
+	mat.shader = shader
+	mat.base_color = base_color
+	mat.base_roughness = 0.0
+	mat.base_reflectance = 0.0
+	mat.base_clearcoat = 1.0
+	mat.thickness = thickness
+	if point_size > 0.0:
+		mat.point_size = point_size
+	mat.transmission = transmission
+	mat.absorption_distance = 10
+	mat.absorption_color = absorption_color
+	return mat
+	
+def compute_signed_distance_and_closest_goemetry(target_mesh, pcd, query_points): # http://www.open3d.org/docs/latest/tutorial/geometry/distance_queries.html
 	''' closest_points = scene.compute_closest_points(query_points)
 	distance = np.linalg.norm(query_points - closest_points['points'].numpy(),
 							  axis=-1)
@@ -295,6 +310,61 @@ def compute_signed_distance_and_closest_goemetry(target_mesh, query_points): # h
 	t = -(np.dot(normal, tar_point) + d) / np.dot(normal, normal)	# Calculate the t value for the line equation
 	intersection_point = tar_point + t * normal	# Calculate the intersection point
 
+	# compare dataset[0] and intersection_point
+	tol = 0.01
+	ip = dataset[0][0]
+	dist = distance.euclidean(ip, intersection_point)
+	if dist > tol:
+		print(f'{tar_point} perp point is over test tolerance {dist: .3f} / {tol: .3f}')
+
+	flag = False
+	if flag:
+		# visualize the mesh with the intersection point using open3d
+		o3d_mesh = o3d.geometry.TriangleMesh()
+		o3d_mesh.vertices = o3d.utility.Vector3dVector(target_mesh.vertices)
+		triangles_index = np.array(target_mesh.faces)
+		triangles_index = triangles_index.copy()
+		o3d_mesh.triangles = o3d.utility.Vector3iVector(triangles_index)
+		o3d_mesh.compute_vertex_normals()
+
+		o3d_hit_mesh = o3d.geometry.TriangleMesh()
+		vlist = np.array(triangle_vertices)
+		o3d_hit_mesh.vertices = o3d.utility.Vector3dVector(vlist)
+		o3d_hit_mesh.triangles = o3d.utility.Vector3iVector([[0, 1, 2]])
+		o3d_hit_mesh.compute_vertex_normals()
+
+		o3d_hit_point = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
+		o3d_hit_point.translate(tar_point)
+
+		o3d_intersection_point = o3d.geometry.TriangleMesh.create_sphere(radius=0.1)
+		o3d_intersection_point.translate(intersection_point)
+
+		o3d_pcd = o3d.geometry.PointCloud()
+		o3d_pcd.points = o3d.utility.Vector3dVector(pcd.points)
+
+		geoms = []
+		mat_mesh = create_material('defaultLitSSR', base_color=[0.5, 0.5, 0.5, 0.3], absorption_color=[0.5,0.5,0.5], thickness=1.0, transmission=0.5) 
+		geo = {'name': 'mesh', 'geometry': o3d_mesh, 'material': mat_mesh}
+		geoms.append(geo)
+
+		mat_hit_mesh = create_material('unlitSolidColor', base_color=[1.0, 0, 0.0, 1.0], thickness=1.0)
+		geo = {'name': 'hit_mesh', 'geometry': o3d_hit_mesh, 'material': mat_hit_mesh}
+		geoms.append(geo)
+
+		mat_hit_point = create_material('unlitSolidColor', base_color=[0.0, 0, 1.0, 1.0], thickness=1.0)
+		geo = {'name': 'hit_point', 'geometry': o3d_hit_point, 'material': mat_hit_point}
+		geoms.append(geo)
+
+		mat_intersection_point = create_material('unlitSolidColor', base_color=[0.0, 1.0, 0, 1.0], thickness=1.0)
+		geo = {'name': 'intersection_point', 'geometry': o3d_intersection_point, 'material': mat_intersection_point}
+		geoms.append(geo)
+
+		mat_pcd = create_material('unlitSolidColor', base_color=[0.0, 0.0, 1.0, 1.0], thickness=1.0)
+		geo = {'name': 'pcd', 'geometry': o3d_pcd, 'material': mat_pcd}
+		geoms.append(geo)
+
+		o3d.visualization.draw(geoms, title = 'test')
+
 	return dataset
 
 def compare_pcd_model_diff(target_mesh, pcd):
@@ -303,7 +373,7 @@ def compare_pcd_model_diff(target_mesh, pcd):
 	diffs = []
 	try:
 		for index, vertex in tqdm(enumerate(pcd.points), desc='calculate model difference'):
-			closest_points, diff_distances, indics = compute_signed_distance_and_closest_goemetry(target_mesh, [vertex])
+			closest_points, diff_distances, indics = compute_signed_distance_and_closest_goemetry(target_mesh, pcd, [vertex])
 			if len(closest_points) == 0:
 				continue
 			
@@ -311,9 +381,10 @@ def compare_pcd_model_diff(target_mesh, pcd):
 			diff_distance = diff_distances[min_index]
 			min_point = closest_points[min_index]
 			if diff_distance > _config['check_model']['min_distance']:
+				print('over min distance of config.json')
 				continue
 
-			diffs.append((min_point[0], min_point[1], min_point[2], diff_distance))
+			diffs.append((vertex[0], vertex[1], vertex[2], diff_distance))
 
 		diffs = np.array(diffs)
 	except:
@@ -390,12 +461,13 @@ def check_flatness(input_fname):
 	return pcd, ints, diffs
 
 def check_model(input_fname, model_fname):
-	mesh = trimesh.load_mesh(model_fname)	# issue: rotated by 90 degree (x-axis)
-	angle = math.pi / 2
-	direction = [1, 0, 0]
-	center = [0, 0, 0]
-	rot_matrix = trimesh.transformations.rotation_matrix(angle, direction, center)
-	mesh.apply_transform(rot_matrix)
+	mesh = trimesh.load_mesh(model_fname)	
+	# fixed. issue: rotated by 90 degree (x-axis)
+	# angle = math.pi / 2
+	# direction = [1, 0, 0]
+	# center = [0, 0, 0]
+	# rot_matrix = trimesh.transformations.rotation_matrix(angle, direction, center)
+	# mesh.apply_transform(rot_matrix)
 
 	pcd = load_point_cloud(input_fname)
 	diffs = compare_pcd_model_diff(mesh, pcd)
@@ -420,6 +492,37 @@ def output_excel(output_fname, pcd, diffs):
 		traceback.print_exc()
 		pass
 
+def output_excel_model_diff_state(output_fname, pcd, diffs):
+	try:
+		df = pd.DataFrame(columns=['ID', 'X', 'Y', 'Z', 'Diff'])
+
+		for index, diff in enumerate(diffs):
+			ID = index
+			x = diff[0]
+			y = diff[1]
+			z = diff[2]
+			d = diff[3]
+
+			if ID % 1000 == 0:
+				print(f'point {ID} = ({x:.2f}, {y:.2f}, {z:.2f}), diff = {d:.3f}')
+				df = pd.concat([df, pd.DataFrame([[ID, x, y, z, d]], columns=['ID', 'X', 'Y', 'Z', 'Diff'])])
+
+		minm = diffs[:, 3].min()
+		maxm = diffs[:, 3].max()
+		avr = diffs[:, 3].mean()
+		std = diffs[:, 3].std()
+		print(f'min = {minm:.3f}, max = {maxm:.3f}, avr = {avr:.3f}, std = {std:.3f}')
+
+		df = pd.concat([df, pd.DataFrame([['min', '', '', '', minm]], columns=['ID', 'X', 'Y', 'Z', 'Diff'])])
+		df = pd.concat([df, pd.DataFrame([['max', '', '', '', maxm]], columns=['ID', 'X', 'Y', 'Z', 'Diff'])])
+		df = pd.concat([df, pd.DataFrame([['average', '', '', '', avr]], columns=['ID', 'X', 'Y', 'Z', 'Diff'])])
+		df = pd.concat([df, pd.DataFrame([['std', '', '', '', std]], columns=['ID', 'X', 'Y', 'Z', 'Diff'])])
+
+		df.to_excel(output_fname, index=False, sheet_name='Difference')
+	except:
+		traceback.print_exc()
+		pass
+
 def output_pcd(input_path, output_path, diffs):
 	try:
 		'''
@@ -430,6 +533,10 @@ def output_pcd(input_path, output_path, diffs):
 		# features = np.concatenate((diffs[:, 0:3], diffs[:, 3:4]), axis=1)
 		# input_path's extension is pcd
 		'''
+		if diffs.any() == None or diffs.shape[0] == 0:
+			print('no difference information')
+			return
+
 		ext = os.path.splitext(input_path)[1]
 		ext = ext.lower()
 		if ext == '.pcd':
@@ -446,7 +553,7 @@ def output_pcd(input_path, output_path, diffs):
 			FEATURE_NAMES = [
 				"diff"
 			]
-			las_utils.write_with_extra_dims("input_las.las", output_path, diffs, FEATURE_NAMES)
+			las_utils.write_with_extra_dims("input_las.las", output_path, diffs[:, 3:4], FEATURE_NAMES)
 
 		elif ext == '.las':
 			FEATURE_NAMES = [
@@ -611,8 +718,7 @@ def main():
 		elif args.option == 'model':
 			pcd, diffs = check_model(args.input, args.model)
 			output_pcd(args.input, args.output + ".las", diffs)
-			# output_acad_diff_model(diffs)
-			# output_excel(args.output + ".xlsx", pcd, diffs)
+			output_excel_model_diff_state(args.output + ".xlsx", pcd, diffs)
 			# output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
 		else:
 			print('option is not supported.')
