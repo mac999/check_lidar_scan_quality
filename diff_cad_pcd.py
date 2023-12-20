@@ -493,7 +493,7 @@ def output_excel(output_fname, pcd, diffs):
 		traceback.print_exc()
 		pass
 
-def output_excel_model_diff_state(output_fname, pcd, diffs):
+def output_excel_model_diff_stat(output_fname, pcd, diffs):
 	try:
 		df = pd.DataFrame(columns=['ID', 'X', 'Y', 'Z', 'Diff'])
 
@@ -566,14 +566,6 @@ def output_pcd_las(input_path, output_path, pcd, diffs):
 			]
 			las_utils.write_with_extra_dims("input_las.las", output_path + '.las', diffs[:, 4:5], FEATURE_NAMES)
 
-			header = laspy.LasHeader(point_format=3, version="1.2")
-			with laspy.open(output_path + '_tangent.las', mode="w", header=header) as writer:
-				point_record = laspy.ScaleAwarePointRecord.zeros(diffs.shape[0], header=header)
-				point_record.x = diffs[:, 1]	# https://laspy.readthedocs.io/en/latest/examples.html
-				point_record.y = diffs[:, 2]
-				point_record.z = diffs[:, 3]
-				writer.write_points(point_record)
-
 		elif ext == '.las':
 			FEATURE_NAMES = [
 				"index",
@@ -583,6 +575,15 @@ def output_pcd_las(input_path, output_path, pcd, diffs):
 				"diff"
 			]
 			las_utils.write_with_extra_dims(input_path, output_path + ".las", diffs, FEATURE_NAMES)		
+
+		header = laspy.LasHeader(point_format=3, version="1.2")
+		with laspy.open(output_path + '_tangent.las', mode="w", header=header) as writer:
+			point_record = laspy.ScaleAwarePointRecord.zeros(diffs.shape[0], header=header)
+			point_record.x = diffs[:, 1]	# https://laspy.readthedocs.io/en/latest/examples.html
+			point_record.y = diffs[:, 2]
+			point_record.z = diffs[:, 3]
+			writer.write_points(point_record)
+
 	except:
 		traceback.print_exc()
 		pass
@@ -738,7 +739,7 @@ def main():
 		elif args.option == 'model':
 			pcd, diffs = check_model(args.input, args.model)
 			output_pcd_las(args.input, args.output, pcd, diffs)
-			output_excel_model_diff_state(args.output + ".xlsx", pcd, diffs)
+			output_excel_model_diff_stat(args.output + ".xlsx", pcd, diffs)
 			# output_report(args.output + ".pdf", args.title, args.author, args.date, pcd, diffs)
 		else:
 			print('option is not supported.')
