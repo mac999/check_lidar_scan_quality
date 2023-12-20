@@ -22,7 +22,7 @@ At each intersection of the grid drawn in AutoCAD, the height value of the input
 <p align="center">
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model1.JPG"/>
 <img height="200" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model2.JPG"/></br>
-<img height="160" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model_output1.JPG"/></br>
+<img height="170" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model_output1.JPG"/></br>
 <img height="220" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model_output2.JPG"/>
 <img height="220" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model_output3.JPG"/></br>
 <img height="180" src="https://github.com/mac999/check_scan_quality/blob/main/doc/model_output4.JPG"/>
