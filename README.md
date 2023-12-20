@@ -42,6 +42,7 @@ option</br>
 --input: example=sample_floor.pcd. help=input scan data file (pcd).</br>
 --model: example=simple_mesh.obj. help=input model file (obj, stl, ply, off).</br>
 --output: example=output. help=output excel and report(pdf) file.</br>
+--option: default='model', help=planarity | verticality | features | model.</br>
 --config: example=config.json. help=input config.json file.</br>
 --title: example=Scan Data Quality Control Report. help=title of report.</br>
 --date: example=2023-09-01. help=date of report.</br>
@@ -69,7 +70,7 @@ this program supports variable option to visualize the results in cad, report.</
         "show_height": true
     },
     "check_model": {
-        "min_distance": 10.0
+        "min_distance": 0.1
     },
     "color_schema.height": [
         {
