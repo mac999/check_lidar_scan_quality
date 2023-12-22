@@ -6,7 +6,7 @@
 # version
 #   0.1. 2023.8.1. first release.
 #   0.2. 2023.10.2. update difference between PCD and mesh object.
-#   0.3. fixed bug. 
+#   0.3. fixed bug. Thread, CUDA
 # 
 import os, math, argparse, json, traceback, numpy as np, pandas as pd, trimesh, laspy
 import pyautocad, open3d as o3d, seaborn as sns, win32com.client, pythoncom
@@ -300,6 +300,7 @@ def compute_signed_distance_and_closest_goemetry(target_mesh, pcd, query_points)
 	if dataset == None or len(dataset) == 0:
 		return None, None, None
 
+	# 2nd test, validation
 	tar_point = query_points[0]
 	index = dataset[2][0]
 	triangle_vertices = target_mesh.triangles[index]
@@ -409,7 +410,7 @@ def compare_pcd_diff(target_mesh, pcd, ints):
 			if idx == None or len(idx) == 0:
 				continue
 
-			# if math.fabs(intersection_point[0] - 2.5) < 0.001 and math.fabs(intersection_point[1] - 1.25) < 0.001:
+			# if math.fabs(intersection_point[0] - 2.5) < 0.001 and math.fabs(intersection_point[1] - 1.25) < 0.001: # test
 			# 	index = index
 
 			find_pt_pcd = pcd.points[idx[0]]
