@@ -1,5 +1,5 @@
-# check scan quality
-3D scan data quality (version 0.2) checker
+# check LiDAR scan quality
+3D LiDAR scan data quality (version 0.2) checker
 
 <p align="center">
 <img height="300" src="https://github.com/mac999/check_scan_quality/blob/main/doc/Animation.gif"/>
